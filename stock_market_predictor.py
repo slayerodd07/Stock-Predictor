@@ -12,6 +12,9 @@ import datetime
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
 
 
@@ -100,3 +103,39 @@ data['Lower_B'] = data['SMA_20'] - data['STD_20']*2
 
 
 print(data)
+
+# Use just the Close price for prediction
+df = data[['Close']].copy()
+
+# Create a target column by shifting Close price up by 1 day
+df['Target'] = df['Close'].shift(-1)
+
+# Drop the last row (NaN target)
+df.dropna(inplace=True)
+
+# Features (X) and Target (y)
+X = df[['Close']]  # today's price
+y = df['Target']   # tomorrow's price
+
+# Split into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Train the model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Make predictions
+predictions = model.predict(X_test)
+
+# Evaluation
+mse = mean_squared_error(y_test, predictions)
+print(f"\nModel Mean Squared Error: {mse:.4f}")
+
+# Compare actual vs predicted
+comparison = pd.DataFrame({'Actual': y_test, 'Predicted': predictions}, index=y_test.index)
+print(comparison.tail())
+
+# Predict next day
+latest_price = df[['Close']].iloc[-1].values.reshape(1, -1)
+next_day_prediction = model.predict(latest_price)
+print(f"\nPredicted Close Price for the Next Day: ${next_day_prediction[0]:.2f}")
